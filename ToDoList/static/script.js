@@ -9,7 +9,7 @@ function myFunction() {
     element.classList.toggle("dark-mode");
  }
 
-let createNewTask = function(taskName) {
+let createNewTask = function(taskName, completed = false) {
     let listItem = document.createElement("li");
     let checkBox = document.createElement("input");
     let label = document.createElement("label");
@@ -18,6 +18,7 @@ let createNewTask = function(taskName) {
     let deleteButton = document.createElement("button");
 
     checkBox.type = "checkBox";
+    checkBox.checked = completed;
     editInput.type = "text";
     editButton.innerText = "Edit";
     editButton.className = "edit";
@@ -41,9 +42,13 @@ let addTask = function() {
     let listItem = createNewTask(taskInput.value);
     incompleteTasks.appendChild(listItem);
     bindTaskEvents(listItem, taskCompleted);
-    taskInput.value = "";
+
+    let tasks = getTasksFromLocalStorage();
+    tasks.push({ text: taskInput.value, completed: false });
+    saveTasksToLocalStorage(tasks);
+
+    taskInput.value ="";
 }
-addButton.addEventListener("click", addTask);
 
 let editTask = function() {
 
@@ -57,23 +62,49 @@ let editTask = function() {
         editInput.value = label.innerText;
     }
     listItem.classList.toggle("editMode");
+
+    let tasks = getTasksFromLocalStorage();
+    tasks = editInput.value;
 }
+
+
 let deleteTask = function() {
     let listItem = this.parentNode;
     let ul = listItem.parentNode;
     ul.removeChild(listItem);
+
+    let tasks = getTasksFromLocalStorage();
+    tasks = tasks.filter(task => task.text !== listItem.querySelector("label").innerText);
+    saveTasksToLocalStorage(tasks);
 }
+
+
 let taskCompleted = function() {
     let listItem = this.parentNode;
     completedTasks.appendChild(listItem);
     bindTaskEvents(listItem, taskIncomplete);
+
+    let tasks = getTasksFromLocalStorage();
+    let taskText = listItem.querySelector("label").innerText;
+    tasks = tasks.map(task => (task.text === taskText ? { ...task, completed: true } : task));
+    saveTasksToLocalStorage(tasks);
 }
 
 let taskIncomplete = function() {
     let listItem = this.parentNode;
     incompleteTasks.appendChild(listItem);
     bindTaskEvents(listItem, taskCompleted);
+
+    let tasks = getTasksFromLocalStorage();
+    let taskText = listItem.querySelector("label").innerText;
+    tasks = tasks.map(task => (task.text === taskText ? { ...task, completed: false } : task));
+    saveTasksToLocalStorage(tasks);
 }
+
+function getTasksFromLocalStorage() {
+    return JSON.parse(localStorage.getItem('tasks')) || [];
+}
+
 let bindTaskEvents = function(taskListItem, checkBoxEventHandler) {
     let checkBox = taskListItem.querySelector('input[type="checkbox"]');
     let editButton = taskListItem.querySelector("button.edit");
@@ -85,10 +116,33 @@ let bindTaskEvents = function(taskListItem, checkBoxEventHandler) {
 
 let clear = function() {
     incompleteTasks.innerHTML = "";
-    completedTasks.innerHTML = "";
+    completedTasks.innerHTML = ""; 
+
+    localStorage.removeItem('tasks');
 }
 
+let storedTasks = JSON.parse(localStorage.getItem('tasks')) || [];
+displayTasks(storedTasks);
 
+function displayTasks(tasks) {
+    let incompleteTasks = document.getElementById("incomplete-tasks");
+    let completedTasks = document.getElementById("completed-tasks");
 
+    tasks.forEach(task => {
+        let listItem = createNewTask(task.text, task.completed);
+        if (task.completed) {
+            completedTasks.appendChild(listItem);
+            bindTaskEvents(listItem, taskIncomplete);
+        } else {
+            incompleteTasks.appendChild(listItem);
+            bindTaskEvents(listItem, taskCompleted);
+        }
+    });
+}
 
+function saveTasksToLocalStorage(tasks) {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+}
+
+addButton.addEventListener("click", addTask);
 clearButton.addEventListener('click', clear);
